@@ -1,0 +1,61 @@
+version: 2.1
+
+jobs:
+  lint-dockerfile:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Install hadolint
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y wget
+            wget -O hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+            chmod +x hadolint
+            sudo mv hadolint /usr/local/bin/hadolint
+      - run:
+          name: Lint Dockerfile
+          command: hadolint Dockerfile
+
+  build-app-karsajobs-ui:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker
+
+      - run:
+          name: Login to GHCR
+          command: |
+            echo $GHCR_TOKEN | docker login ghcr.io -u $GHCR_USERNAME --password-stdin
+
+      - run:
+          name: Build Docker image
+          command: |
+            docker build -t ghcr.io/$GHCR_USERNAME/karsajobs-ui:latest .
+
+      - run:
+          name: Push Docker image
+          command: |
+            docker push ghcr.io/$GHCR_USERNAME/karsajobs-ui:latest
+
+workflows:
+  karsajobs-workflow:
+    jobs:
+      - lint-dockerfile:
+          filters:
+            branches:
+              only: karsajobs
+      - test-app:
+          requires:
+            - lint-dockerfile
+          filters:
+            branches:
+              only: karsajobs
+      - build-app-karsajobs:
+          requires:
+            - test-app
+          filters:
+            branches:
+              only: karsajobs
