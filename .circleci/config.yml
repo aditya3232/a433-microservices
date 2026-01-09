@@ -41,21 +41,16 @@ jobs:
             docker push ghcr.io/$GHCR_USERNAME/karsajobs-ui:latest
 
 workflows:
-  karsajobs-workflow:
+  karsajobs-ui-workflow:
     jobs:
       - lint-dockerfile:
           filters:
             branches:
-              only: karsajobs
-      - test-app:
+              only: karsajobs-ui
+
+      - build-app-karsajobs-ui:
           requires:
             - lint-dockerfile
           filters:
             branches:
-              only: karsajobs
-      - build-app-karsajobs:
-          requires:
-            - test-app
-          filters:
-            branches:
-              only: karsajobs
+              only: karsajobs-ui
