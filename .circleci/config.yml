@@ -1,53 +1,83 @@
 version: 2.1
+# Versi konfigurasi CircleCI
 
 jobs:
+  # =========================
+  # JOB: Lint Dockerfile UI
+  # =========================
   lint-dockerfile:
     docker:
+      # Image Linux dasar dari CircleCI
       - image: cimg/base:stable
     steps:
+      # Ambil source code dari repository
       - checkout
+
+      # Install hadolint untuk cek best practice Dockerfile
       - run:
           name: Install hadolint
           command: |
             sudo apt-get update
             sudo apt-get install -y wget
+            # Download hadolint binary terbaru
             wget -O hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
             chmod +x hadolint
+            # Pindahkan ke PATH agar bisa dipanggil langsung
             sudo mv hadolint /usr/local/bin/hadolint
+
+      # Jalankan hadolint terhadap Dockerfile UI
       - run:
           name: Lint Dockerfile
           command: hadolint Dockerfile
 
+  # =========================
+  # JOB: Build & Push UI Image
+  # =========================
   build-app-karsajobs-ui:
     docker:
+      # Image dasar untuk build Docker
       - image: cimg/base:stable
     steps:
+      # Checkout source code
       - checkout
+
+      # Aktifkan remote Docker (dibutuhkan untuk docker build & push)
       - setup_remote_docker
 
+      # Login ke GitHub Container Registry (GHCR)
       - run:
           name: Login to GHCR
           command: |
+            # GHCR_TOKEN & GHCR_USERNAME disimpan di CircleCI Environment Variables
             echo $GHCR_TOKEN | docker login ghcr.io -u $GHCR_USERNAME --password-stdin
 
+      # Build Docker image untuk karsajobs-ui
       - run:
           name: Build Docker image
           command: |
             docker build -t ghcr.io/$GHCR_USERNAME/karsajobs-ui:latest .
 
+      # Push image ke GHCR
       - run:
           name: Push Docker image
           command: |
             docker push ghcr.io/$GHCR_USERNAME/karsajobs-ui:latest
 
+# =========================
+# WORKFLOW
+# =========================
 workflows:
   karsajobs-ui-workflow:
     jobs:
+      # Step 1: Lint Dockerfile UI
       - lint-dockerfile:
           filters:
             branches:
+              # Workflow hanya berjalan di branch karsajobs-ui
               only: karsajobs-ui
 
+      # Step 2: Build & Push Image UI
+      # Hanya berjalan jika lint sukses
       - build-app-karsajobs-ui:
           requires:
             - lint-dockerfile
