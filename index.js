@@ -10,6 +10,48 @@ const amqpServer = process.env.AMQP_URL;
 var channel, connection;
 const orders = [];
 
+async function connectToQueue() {
+    try {
+        console.log("Connecting to RabbitMQ...");
+
+        connection = await amqp.connect(amqpServer);
+
+        // handle error & reconnect
+        connection.on("error", err => {
+            console.error("RabbitMQ error:", err.message);
+        });
+
+        connection.on("close", () => {
+            console.warn("RabbitMQ connection closed. Reconnecting...");
+            setTimeout(connectToQueue, 5000);
+        });
+
+        channel = await connection.createChannel();
+        await channel.assertQueue("order");
+
+        console.log("Connected. Waiting for orders...");
+
+        channel.consume("order", data => {
+            if (!data) return;
+
+            const orderData = JSON.parse(data.content.toString());
+            console.log("Order received:", orderData);
+
+            orders.push({
+                ...orderData,
+                receivedAt: new Date().toISOString()
+            });
+
+            channel.ack(data);
+        });
+
+    } catch (ex) {
+        console.error("RabbitMQ connection failed:", ex.message);
+        setTimeout(connectToQueue, 5000);
+    }
+}
+
+// tetap dipanggil sekali, sisanya auto-retry
 connectToQueue();
 
 async function connectToQueue() {
@@ -32,6 +74,9 @@ async function connectToQueue() {
     }
 }
 
+/**
+ * GET info health
+ */
 app.get("/health", (req, res) => {
     res.json({
         status: "ok",
