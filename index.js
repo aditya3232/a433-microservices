@@ -42,7 +42,7 @@ app.get("/health", (req, res) => {
 /**
  * GET all received orders
  */
-app.get("/orders", (req, res) => {
+app.get("/shipping", (req, res) => {
     res.json({
         total: orders.length,
         data: orders
@@ -52,9 +52,9 @@ app.get("/orders", (req, res) => {
 /**
  * GET last order
  */
-app.get("/orders/latest", (req, res) => {
+app.get("/shipping/latest", (req, res) => {
     if (orders.length === 0) {
-        return res.status(404).json({ message: "No orders yet" });
+        return res.status(404).json({ message: "No shipping yet" });
     }
 
     res.json(orders[orders.length - 1]);
